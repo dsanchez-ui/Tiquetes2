@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { LOGO_URL } from '../constants';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -16,10 +17,18 @@ export const Layout: React.FC<LayoutProps> = ({ children, userEmail, userName, r
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <div className="flex-shrink-0 flex items-center">
-                {/* Logo Removed, Text Extended */}
-                <span className="font-bold text-lg sm:text-xl tracking-wide text-white">
+              <div className="flex-shrink-0 flex items-center gap-4">
+                <img 
+                  src={LOGO_URL} 
+                  alt="Organización Equitel" 
+                  className="h-10 w-auto object-contain bg-white rounded-sm px-1"
+                  referrerPolicy="no-referrer"
+                />
+                <span className="font-bold text-lg sm:text-xl tracking-wide text-white hidden sm:block">
                   Portal de Viajes - Organización Equitel
+                </span>
+                <span className="font-bold text-lg tracking-wide text-white sm:hidden">
+                  Equitel Viajes
                 </span>
               </div>
               <div className="hidden sm:ml-10 sm:flex sm:space-x-8">

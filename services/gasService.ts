@@ -101,6 +101,33 @@ class GasService {
     const response = await this.runGas('closeRequest', { requestId });
     if (!response.success) throw new Error(response.error);
   }
+
+  // --- MODIFICATION FEATURES ---
+
+  async enhanceTextWithGemini(currentRequest: TravelRequest, userDraft: string): Promise<string> {
+    const response = await this.runGas('enhanceChangeText', { currentRequest, userDraft });
+    if (!response.success) throw new Error(response.error);
+    return response.data;
+  }
+
+  async requestModification(requestId: string, modifiedRequest: Partial<TravelRequest>, changeReason: string): Promise<void> {
+     const response = await this.runGas('requestModification', { requestId, modifiedRequest, changeReason });
+     if (!response.success) throw new Error(response.error);
+  }
+
+  // --- ADMIN SECURITY ---
+  
+  async verifyAdminPin(pin: string): Promise<boolean> {
+     const response = await this.runGas('verifyAdminPin', { pin });
+     if (!response.success) throw new Error(response.error);
+     return response.data === true;
+  }
+
+  async updateAdminPin(newPin: string): Promise<boolean> {
+     const response = await this.runGas('updateAdminPin', { newPin });
+     if (!response.success) throw new Error(response.error);
+     return response.data === true;
+  }
 }
 
 export const gasService = new GasService();

@@ -4,8 +4,10 @@ import { Layout } from './components/Layout';
 import { RequestForm } from './components/RequestForm';
 import { AdminDashboard } from './components/AdminDashboard';
 import { RequestDetail } from './components/RequestDetail';
+import { PinEntryModal } from './components/PinEntryModal';
 import { gasService } from './services/gasService';
 import { TravelRequest, UserRole, Integrant } from './types';
+import { LOGO_URL } from './constants';
 
 // Interval in milliseconds to refresh data (Auto-Sync)
 const POLL_INTERVAL_MS = 15000;
@@ -32,6 +34,10 @@ const App: React.FC = () => {
 
   // Login Form State
   const [loginEmailInput, setLoginEmailInput] = useState('');
+  
+  // Security Modal State
+  const [showPinModal, setShowPinModal] = useState(false);
+  const [pendingAdminEmail, setPendingAdminEmail] = useState('');
 
   // Initial Check (Try Auto-Login) + Load Integrantes
   useEffect(() => {
@@ -105,17 +111,35 @@ const App: React.FC = () => {
     if(loginEmailInput) handleLoginSuccess(loginEmailInput);
   };
 
-  const handleAdminLogin = () => {
+  const handleAdminLoginClick = () => {
     let emailToUse = loginEmailInput;
     if (!emailToUse) {
         emailToUse = 'admin@travelmaster.com';
     }
 
     if (emailToUse.includes('admin') || emailToUse.includes('compras') || emailToUse.includes('analista')) {
-        handleLoginSuccess(emailToUse);
+        // Instead of logging in directly, show PIN modal
+        setPendingAdminEmail(emailToUse);
+        setShowPinModal(true);
     } else {
         alert('El correo ingresado no tiene permisos de administrador (debe contener "admin", "compras" o "analista").');
     }
+  };
+
+  const handlePinSubmit = async (pin: string) => {
+      // Verify PIN against backend
+      try {
+          const isValid = await gasService.verifyAdminPin(pin);
+          if (isValid) {
+              setShowPinModal(false);
+              handleLoginSuccess(pendingAdminEmail);
+              return true;
+          }
+          return false;
+      } catch (e) {
+          console.error(e);
+          return false;
+      }
   };
 
   const handleLogout = () => {
@@ -157,9 +181,26 @@ const App: React.FC = () => {
   if (!userEmail) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+        
+        {showPinModal && (
+            <PinEntryModal 
+                isOpen={showPinModal}
+                onClose={() => setShowPinModal(false)}
+                onSubmit={handlePinSubmit}
+            />
+        )}
+
         <div className="bg-white p-8 rounded-lg shadow-2xl text-center max-w-md w-full border-t-8 border-brand-red">
             
-            {/* Header Text Replacement */}
+            <div className="flex justify-center mb-6">
+                <img 
+                  src={LOGO_URL} 
+                  alt="Organización Equitel" 
+                  className="h-20 w-auto object-contain" 
+                  referrerPolicy="no-referrer"
+                />
+            </div>
+
             <div className="mb-8">
                <h2 className="text-2xl font-bold text-gray-900 tracking-tight leading-tight">
                   Portal de Viajes
@@ -197,7 +238,7 @@ const App: React.FC = () => {
                 </div>
 
                 <button 
-                    onClick={handleAdminLogin}
+                    onClick={handleAdminLoginClick}
                     className="w-full bg-black text-white py-3 px-4 rounded font-bold uppercase tracking-wide hover:bg-gray-800 transition shadow hover:shadow-md"
                 >
                     ADMINISTRADOR

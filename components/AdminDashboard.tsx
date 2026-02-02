@@ -4,6 +4,7 @@ import { TravelRequest, RequestStatus } from '../types';
 import { OptionUploadModal } from './OptionUploadModal';
 import { SupportUploadModal } from './SupportUploadModal';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { PinEntryModal } from './PinEntryModal';
 import { gasService } from '../services/gasService';
 
 interface AdminDashboardProps {
@@ -18,6 +19,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ requests, onRefr
   const [selectedRequestForOptions, setSelectedRequestForOptions] = useState<TravelRequest | null>(null);
   const [selectedRequestForSupports, setSelectedRequestForSupports] = useState<TravelRequest | null>(null);
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [showPinChangeModal, setShowPinChangeModal] = useState(false);
 
   // Dialog State
   const [dialog, setDialog] = useState<{
@@ -94,6 +96,24 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ requests, onRefr
     }
   };
 
+  const handlePinChangeSubmit = async (newPin: string) => {
+    try {
+        await gasService.updateAdminPin(newPin);
+        setShowPinChangeModal(false);
+        setDialog({
+            isOpen: true,
+            title: 'Seguridad Actualizada',
+            message: 'El PIN de administrador ha sido actualizado correctamente.',
+            type: 'SUCCESS',
+            onConfirm: closeDialog
+        });
+        return true;
+    } catch (e) {
+        alert("Error actualizando PIN: " + e);
+        return false;
+    }
+  };
+
   return (
     <div className="space-y-6">
       <ConfirmationDialog 
@@ -104,13 +124,31 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({ requests, onRefr
         onConfirm={dialog.onConfirm}
         onCancel={dialog.onCancel}
       />
+      
+      {showPinChangeModal && (
+          <PinEntryModal 
+            isOpen={showPinChangeModal}
+            title="Cambiar PIN de Acceso"
+            onClose={() => setShowPinChangeModal(false)}
+            onSubmit={handlePinChangeSubmit}
+            onChangeMode={true}
+          />
+      )}
 
       <div className="sm:flex sm:items-center justify-between">
         <div className="sm:flex-auto">
           <h1 className="text-2xl font-semibold text-gray-900">Panel de Analista</h1>
           <p className="mt-2 text-sm text-gray-700">Gestione cotizaciones, opciones y procesos de aprobación.</p>
         </div>
-        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none">
+        <div className="mt-4 sm:mt-0 sm:ml-16 sm:flex-none flex gap-2">
+          <button
+            onClick={() => setShowPinChangeModal(true)}
+            disabled={isLoading}
+            className="inline-flex items-center justify-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 disabled:opacity-50 gap-2"
+          >
+            <span>🔒</span>
+            Cambiar PIN
+          </button>
           <button
             onClick={onRefresh}
             disabled={isLoading}

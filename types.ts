@@ -8,7 +8,8 @@ export enum UserRole {
 export enum RequestStatus {
   PENDING_OPTIONS = 'PENDIENTE_OPCIONES', 
   PENDING_SELECTION = 'PENDIENTE_SELECCION', 
-  PENDING_APPROVAL = 'PENDIENTE_APROBACION', 
+  PENDING_APPROVAL = 'PENDIENTE_APROBACION',
+  PENDING_CHANGE_APPROVAL = 'PENDIENTE_APROBACION_CAMBIO', // New status
   APPROVED = 'APROBADO',
   REJECTED = 'DENEGADO',
   PROCESSED = 'PROCESADO' 
@@ -101,6 +102,11 @@ export interface TravelRequest {
   
   // Supports (Post-Approval)
   supportData?: SupportData;
+
+  // Modification Workflow
+  pendingChangeData?: string; // JSON string of the proposed TravelRequest changes
+  changeReason?: string;      // The text description of the change
+  hasChangeFlag?: boolean;    // "CAMBIO GENERADO" flag
 }
 
 export interface CostCenterMaster {

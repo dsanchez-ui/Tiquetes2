@@ -6,6 +6,9 @@
 // TODO: REPLACE THIS WITH YOUR DEPLOYED GOOGLE APPS SCRIPT WEB APP URL
 export const API_BASE_URL = 'https://script.google.com/macros/s/AKfycbymPQQO0C8Xf089bjAVIciWNbsr9DmS50odghFp7t_nh5ZqHGFe7HisbaFF-TqMPxPwwQ/exec';
 
+// Logo hosted on Google Drive (Using Thumbnail endpoint for better embedding reliability)
+export const LOGO_URL = 'https://drive.google.com/thumbnail?id=1hA1i-1mG4DbBmzG1pFWafoDrCWwijRjq&sz=w1000';
+
 export const SHEET_NAMES = {
   REQUESTS: 'Nueva Base Solicitudes',
   MASTERS: 'MAESTROS'

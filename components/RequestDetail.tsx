@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { TravelRequest, Option, FlightDetails, RequestStatus } from '../types';
 import { gasService } from '../services/gasService';
 import { ConfirmationDialog } from './ConfirmationDialog';
+import { ModificationForm } from './ModificationForm';
 
 interface RequestDetailProps {
   request: TravelRequest;
@@ -49,6 +50,7 @@ const OptionCard: React.FC<OptionCardProps> = ({ option, isSelected = false }) =
 
 export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProps) => {
   const [loading, setLoading] = useState(false);
+  const [showModifyForm, setShowModifyForm] = useState(false);
   
   // Dialog State
   const [dialog, setDialog] = useState<{
@@ -74,6 +76,10 @@ export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProp
 
   // Logic for Finalize Button
   const canFinalize = request.status === RequestStatus.APPROVED && request.supportData && request.supportData.files.length > 0;
+  
+  // Logic for Modification
+  // Can modify if NOT processed (closed) and NOT already pending a change
+  const canModify = request.status !== RequestStatus.PROCESSED && request.status !== RequestStatus.PENDING_CHANGE_APPROVAL;
 
   const handleFinalizeClick = () => {
     setDialog({
@@ -127,6 +133,27 @@ export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProp
         onCancel={dialog.onCancel}
       />
 
+      {showModifyForm && (
+        <ModificationForm 
+            originalRequest={request} 
+            onClose={() => setShowModifyForm(false)}
+            onSuccess={() => {
+                setShowModifyForm(false);
+                setDialog({
+                    isOpen: true,
+                    title: 'Petición Enviada',
+                    message: 'Su solicitud de modificación ha sido enviada al administrador para revisión.',
+                    type: 'SUCCESS',
+                    onConfirm: () => {
+                        closeDialog();
+                        if (onRefresh) onRefresh();
+                        onClose();
+                    }
+                });
+            }}
+        />
+      )}
+
       <div className="fixed inset-0 z-[60] overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div className="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
           
@@ -146,7 +173,6 @@ export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProp
                 onClick={onClose}
               >
                 <span className="sr-only">Cerrar</span>
-                {/* REPLACED SVG CLOSE ICON */}
                 ✕
               </button>
             </div>
@@ -161,21 +187,60 @@ export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProp
                           request.status === 'APROBADO' ? 'bg-green-100 text-green-700' : 
                           request.status === 'DENEGADO' ? 'bg-red-100 text-red-700' : 
                           request.status === 'PROCESADO' ? 'bg-gray-800 text-white' :
+                          request.status === 'PENDIENTE_APROBACION_CAMBIO' ? 'bg-purple-100 text-purple-700' :
                           'bg-gray-100 text-gray-600'
                       }`}>
-                          {request.status}
+                          {request.status.replace(/_/g, ' ')}
                       </div>
+                      
+                      {request.hasChangeFlag && (
+                          <span className="px-3 py-1 text-xs font-bold rounded-full bg-yellow-100 text-yellow-800 animate-pulse">
+                              CAMBIO GENERADO
+                          </span>
+                      )}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Solicitado el: {new Date(request.timestamp).toLocaleString()}</p>
+                  
+                  {request.status === RequestStatus.PENDING_CHANGE_APPROVAL && (
+                       <div className="mt-3 bg-purple-50 p-2 rounded border border-purple-200 text-xs text-purple-800">
+                           <strong>🔄 Modificación en Proceso:</strong> Esta solicitud tiene cambios pendientes de aprobación por parte del administrador.
+                           <br/><em className="text-purple-600 mt-1 block">"{request.changeReason}"</em>
+                       </div>
+                  )}
+
+                  {/* Mostramos el motivo del cambio si ya fue aprobado (CAMBIO GENERADO) */}
+                  {request.hasChangeFlag && request.changeReason && request.status !== RequestStatus.PENDING_CHANGE_APPROVAL && (
+                       <div className="mt-3 bg-yellow-50 p-2 rounded border border-yellow-200 text-xs text-yellow-800">
+                           <strong>📝 Motivo del Último Cambio:</strong> {request.changeReason}
+                       </div>
+                  )}
               </div>
               
               <div className="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
                   
                   {/* 1. INFORMACIÓN DE LA SOLICITUD ORIGINAL */}
                   <section>
-                      <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">1. Requerimiento Inicial</h4>
-                      <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div className="flex justify-between items-center mb-3">
+                          <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">1. Requerimiento Inicial</h4>
                           
+                          {/* BOTÓN SOLICITAR CAMBIO */}
+                          {canModify && (
+                              <button 
+                                onClick={() => setShowModifyForm(true)}
+                                className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1 rounded border border-gray-300 font-bold transition flex items-center gap-1"
+                              >
+                                  ✏️ Solicitar Cambio
+                              </button>
+                          )}
+                      </div>
+                      
+                      <div className="bg-gray-50 rounded-lg p-4 grid grid-cols-1 md:grid-cols-2 gap-4 text-sm relative">
+                          {request.hasChangeFlag && (
+                              <div className="absolute top-0 right-0 p-1">
+                                  <span className="text-[10px] bg-yellow-200 text-yellow-800 px-1 rounded font-bold">INFO ACTUALIZADA</span>
+                              </div>
+                          )}
+
                           {/* Ruta y Fechas */}
                           <div className="col-span-2 grid grid-cols-2 gap-4 border-b border-gray-200 pb-3 mb-1">
                               <div>
