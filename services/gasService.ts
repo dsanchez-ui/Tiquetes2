@@ -9,8 +9,8 @@ class GasService {
    */
   private async runGas(action: string, payload: any = null): Promise<ApiResponse<any>> {
     if (!API_BASE_URL || API_BASE_URL.includes('REPLACE')) {
-      console.error("API URL not configured in constants.ts");
-      return { success: false, error: "API URL no configurada. Revise constants.ts" };
+      console.warn("API URL not configured in constants.ts");
+      return { success: false, error: "API URL no configurada." };
     }
 
     try {
@@ -34,10 +34,20 @@ class GasService {
       }
 
       const textResult = await response.text();
+      
+      // Handle empty response (GAS sometimes returns empty string on void functions, though we expect JSON)
+      if (!textResult) {
+          return { success: true, data: null };
+      }
+
       let result;
       try {
           result = JSON.parse(textResult);
       } catch (e) {
+          // If response is HTML (often Google's error page), treat as server error
+          if (textResult.trim().startsWith('<')) {
+              throw new Error("El servidor devolvió HTML en lugar de JSON (Posible error de script o acceso).");
+          }
           console.error("Invalid JSON response:", textResult);
           throw new Error("El servidor devolvió una respuesta inválida.");
       }
@@ -45,10 +55,17 @@ class GasService {
       return result;
 
     } catch (error: any) {
-      console.error(`[API Error] ${action}:`, error);
-      
       let msg = error.message || 'Error de conexión';
-      if (msg.includes('Failed to fetch')) {
+      const isNetworkError = msg.includes('Failed to fetch') || msg.includes('NetworkError');
+
+      // Graceful logging for initial checks to avoid alarming console red text
+      if ((action === 'getCurrentUser' || action === 'getIntegrantesData') && isNetworkError) {
+          console.warn(`[API Info] Connection check failed for ${action}: Server unreachable or offline.`);
+      } else {
+          console.error(`[API Error] ${action}:`, error);
+      }
+      
+      if (isNetworkError) {
           msg = 'No se pudo conectar con el servidor. Verifique su conexión o la URL del script.';
       }
       return { success: false, error: msg };

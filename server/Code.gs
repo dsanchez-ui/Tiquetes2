@@ -16,9 +16,11 @@ const PLATFORM_URL = 'https://aistudio.google.com/apps/drive/19BXTKPwCakVCf_-twN
 const EMAIL_LOGO_URL = 'https://drive.google.com/thumbnail?id=1hA1i-1mG4DbBmzG1pFWafoDrCWwijRjq&sz=w1000';
 
 // TODO: INSERT YOUR GEMINI API KEY HERE
-const GEMINI_API_KEY = 'test'; 
+const GEMINI_API_KEY = 'test1'; 
 
-const LOCK_WAIT_MS = 30000;
+// TIMEOUT PARA BLOQUEOS (CONCURRENCIA)
+const LOCK_WAIT_MS = 30000; 
+
 const SHEET_NAME_REQUESTS = 'Nueva Base Solicitudes';
 const SHEET_NAME_MASTERS = 'MAESTROS';
 const SHEET_NAME_RELATIONS = 'CDS vs UDEN';
@@ -160,12 +162,13 @@ function dispatch(action, payload) {
   }
 
   try {
+    // LOCKING STRATEGY: Block execution until lock is acquired to prevent race conditions.
     if (isWriteAction) {
       const hasLock = lock.tryLock(LOCK_WAIT_MS);
       if (!hasLock) {
         return { 
           success: false, 
-          error: 'El sistema está ocupado procesando otra solicitud. Por favor intente de nuevo en unos segundos.' 
+          error: 'El sistema está ocupado procesando otra solicitud (Alta concurrencia). Por favor intente de nuevo en unos segundos.' 
         };
       }
     }
@@ -197,6 +200,11 @@ function dispatch(action, payload) {
       default: return { success: false, error: 'Acción desconocida: ' + action };
     }
     
+    // CRITICAL: Flush pending changes before releasing lock to ensure next reader sees up-to-date data.
+    if (isWriteAction) {
+      SpreadsheetApp.flush();
+    }
+
     return { success: true, data: result };
 
   } catch (e) {
@@ -318,7 +326,7 @@ function processModificationDecision(e) {
   }
   
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(10000)) {
+  if (lock.tryLock(LOCK_WAIT_MS)) { // Updated to Global Timeout
      try {
         const ss = SpreadsheetApp.getActiveSpreadsheet();
         const sheet = ss.getSheetByName(SHEET_NAME_REQUESTS);
@@ -371,6 +379,9 @@ function processModificationDecision(e) {
              setVal("OPCIONES (JSON)", "");
              setVal("SELECCION (JSON)", "");
              setVal("APROBADO POR ÁREA?", "");
+             
+             SpreadsheetApp.flush(); // FORCE SAVE
+
              sendEmailRich(requesterEmail, "Cambio Aprobado - Solicitud Reiniciada", 
                  HtmlTemplates.modificationResult(id, 'approve', {requestId: id, requesterEmail: requesterEmail, company: newData.company, site: newData.site})
              );
@@ -378,6 +389,9 @@ function processModificationDecision(e) {
              sheet.getRange(rowNumber, statusIdx + 1).setValue('PENDIENTE_OPCIONES');
              sheet.getRange(rowNumber, changeDataIdx + 1).setValue("");
              sheet.getRange(rowNumber, changeTextIdx + 1).setValue("");
+             
+             SpreadsheetApp.flush(); // FORCE SAVE
+
              const originalReq = mapRowToRequest(sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0]);
              sendEmailRich(requesterEmail, "Cambio Rechazado", 
                  HtmlTemplates.modificationResult(id, 'reject', originalReq)
@@ -389,6 +403,8 @@ function processModificationDecision(e) {
      } finally {
        lock.releaseLock();
      }
+  } else {
+      return renderMessagePage("Sistema Ocupado", "El sistema está ocupado procesando otra solicitud. Por favor intente nuevamente en unos segundos.", '#D71920');
   }
 }
 
@@ -412,7 +428,7 @@ function processOptionSelection(e) {
     }
 
     const lock = LockService.getScriptLock();
-    if (lock.tryLock(10000)) {
+    if (lock.tryLock(LOCK_WAIT_MS)) { // Updated to Global Timeout
         try {
             const ss = SpreadsheetApp.getActiveSpreadsheet();
             const sheet = ss.getSheetByName(SHEET_NAME_REQUESTS);
@@ -454,6 +470,8 @@ function processOptionSelection(e) {
             const selIdx = HEADERS_REQUESTS.indexOf("SELECCION (JSON)");
             sheet.getRange(rowNumber, selIdx + 1).setValue(JSON.stringify(selectedOpt));
             sheet.getRange(rowNumber, statusIdx + 1).setValue('PENDIENTE_APROBACION');
+
+            SpreadsheetApp.flush(); // FORCE SAVE
 
             // Trigger Approval Email
             const rowData = sheet.getRange(rowNumber, 1, 1, sheet.getLastColumn()).getValues()[0];
@@ -497,7 +515,7 @@ function processApprovalFromEmail(e) {
   }
 
   const lock = LockService.getScriptLock();
-  if (lock.tryLock(10000)) {
+  if (lock.tryLock(LOCK_WAIT_MS)) { // Updated to Global Timeout
       try {
           const ss = SpreadsheetApp.getActiveSpreadsheet();
           const sheet = ss.getSheetByName(SHEET_NAME_REQUESTS);
@@ -528,6 +546,8 @@ function processApprovalFromEmail(e) {
           // Proceder con la actualización
           const result = updateRequestStatus(id, decision === 'approved' ? 'APROBADO' : 'DENEGADO', {});
           
+          SpreadsheetApp.flush(); // FORCE SAVE
+
           if (result === true) {
               return renderMessagePage(
                   'Decisión Registrada', 
@@ -548,6 +568,8 @@ function processApprovalFromEmail(e) {
   
   return renderMessagePage("Sistema Ocupado", "El sistema está ocupado procesando otra petición. Intente nuevamente en unos segundos.", '#D71920');
 }
+
+// ... (Rest of Email Helpers, Templates, Render Helpers, and utility functions remains EXACTLY THE SAME as previous version)
 
 // --- EMAIL HELPERS & TEMPLATES ---
 
