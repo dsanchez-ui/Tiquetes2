@@ -16,7 +16,7 @@ const PLATFORM_URL = 'https://aistudio.google.com/apps/drive/19BXTKPwCakVCf_-twN
 const EMAIL_LOGO_URL = 'https://drive.google.com/thumbnail?id=1hA1i-1mG4DbBmzG1pFWafoDrCWwijRjq&sz=w1000';
 
 // TODO: INSERT YOUR GEMINI API KEY HERE
-const GEMINI_API_KEY = 'AIzaSyBBI3PTPaSsspcpA_XkzQjl--Bae101Cbo'; 
+const GEMINI_API_KEY = 'test'; 
 
 const LOCK_WAIT_MS = 30000;
 const SHEET_NAME_REQUESTS = 'Nueva Base Solicitudes';
