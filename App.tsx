@@ -361,6 +361,7 @@ const App: React.FC = () => {
       {selectedRequest && (
         <RequestDetail 
           request={selectedRequest} 
+          integrantes={integrantes} // Changed here
           onClose={() => setSelectedRequest(null)}
           onRefresh={handleManualRefresh}
         />

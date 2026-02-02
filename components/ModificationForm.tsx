@@ -1,18 +1,19 @@
 
 import React, { useState, useEffect } from 'react';
-import { TravelRequest, Passenger, CostCenterMaster } from '../types';
+import { TravelRequest, Passenger, CostCenterMaster, Integrant } from '../types';
 import { COMPANIES, SITES, MAX_PASSENGERS } from '../constants';
 import { gasService } from '../services/gasService';
 
 interface ModificationFormProps {
   originalRequest: TravelRequest;
+  integrantes: Integrant[]; // Data passed from App via RequestDetail
   onClose: () => void;
   onSuccess: () => void;
 }
 
 type TripType = 'ROUND_TRIP' | 'ONE_WAY';
 
-export const ModificationForm: React.FC<ModificationFormProps> = ({ originalRequest, onClose, onSuccess }) => {
+export const ModificationForm: React.FC<ModificationFormProps> = ({ originalRequest, integrantes, onClose, onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [geminiLoading, setGeminiLoading] = useState(false);
 
@@ -131,11 +132,16 @@ export const ModificationForm: React.FC<ModificationFormProps> = ({ originalRequ
     }
   };
 
+  // Helper to check if passenger is in DB
+  const isPassengerInDb = (idNumber: string) => {
+      return integrantes.some(i => i.idNumber === idNumber);
+  };
+
   // Passenger Logic
   const handlePassengerChange = (index: number, field: keyof Passenger, value: string) => {
     let finalValue = value;
     if (field === 'name') {
-      finalValue = value.toUpperCase().replace(/[^A-Z\s]/g, "");
+      finalValue = value.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Z\s]/g, "");
     } else if (field === 'idNumber') {
       finalValue = value.replace(/[^0-9]/g, "");
     }
@@ -144,6 +150,18 @@ export const ModificationForm: React.FC<ModificationFormProps> = ({ originalRequ
     if (newPassengers[index]) {
        // @ts-ignore
        newPassengers[index][field] = finalValue;
+
+       // --- AUTO-FILL LOGIC ---
+       if (field === 'idNumber') {
+           const found = integrantes.find(i => i.idNumber === finalValue);
+           if (found) {
+               newPassengers[index].name = found.name;
+               // Optional: Set email if needed, though ModificationForm partial might not use it directly for display
+               newPassengers[index].email = found.email;
+           }
+       }
+       // -----------------------
+
        setFormData({ ...formData, passengers: newPassengers });
     }
   };
@@ -382,7 +400,8 @@ export const ModificationForm: React.FC<ModificationFormProps> = ({ originalRequ
                                          <input 
                                             value={p.name} 
                                             onChange={(e) => handlePassengerChange(idx, 'name', e.target.value)} 
-                                            className="flex-1 bg-white text-gray-900 border-gray-300 rounded-md shadow-sm focus:ring-brand-red focus:border-brand-red sm:text-sm p-2" 
+                                            readOnly={isPassengerInDb(p.idNumber)} // LOCK IF FOUND
+                                            className={`flex-1 rounded-md border-gray-300 shadow-sm focus:ring-brand-red focus:border-brand-red sm:text-sm p-2 ${isPassengerInDb(p.idNumber) ? 'bg-gray-200 cursor-not-allowed text-gray-600' : 'bg-white text-gray-900'}`} 
                                             placeholder="Nombre Completo"
                                          />
                                          {(formData.passengers?.length || 0) > 1 && (

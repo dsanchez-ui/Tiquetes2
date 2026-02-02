@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
-import { TravelRequest, Option, FlightDetails, RequestStatus } from '../types';
+import { TravelRequest, Option, FlightDetails, RequestStatus, Integrant } from '../types';
 import { gasService } from '../services/gasService';
 import { ConfirmationDialog } from './ConfirmationDialog';
 import { ModificationForm } from './ModificationForm';
 
 interface RequestDetailProps {
   request: TravelRequest;
+  integrantes: Integrant[]; // Added
   onClose: () => void;
   onRefresh?: () => void;
 }
@@ -48,7 +49,7 @@ const OptionCard: React.FC<OptionCardProps> = ({ option, isSelected = false }) =
   </div>
 );
 
-export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProps) => {
+export const RequestDetail = ({ request, integrantes, onClose, onRefresh }: RequestDetailProps) => {
   const [loading, setLoading] = useState(false);
   const [showModifyForm, setShowModifyForm] = useState(false);
   
@@ -136,6 +137,7 @@ export const RequestDetail = ({ request, onClose, onRefresh }: RequestDetailProp
       {showModifyForm && (
         <ModificationForm 
             originalRequest={request} 
+            integrantes={integrantes} // Added
             onClose={() => setShowModifyForm(false)}
             onSuccess={() => {
                 setShowModifyForm(false);
